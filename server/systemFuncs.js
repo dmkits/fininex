@@ -35,6 +35,15 @@ module.exports.saveConfig= function(fileName,dbConfig,callback){
         callback(err,success);
     })
 };
+module.exports.loadDataFromFile= function(fileName){
+    var stringData= fs.readFileSync(path.join(__dirname,'/../','')+fileName);
+    return JSON.parse(stringData);
+};
+module.exports.saveDataToFile= function(fileName,data,callback){
+    fs.writeFile(path.join(__dirname,'/../','')+fileName, JSON.stringify(data), function(err,success){
+        if(callback)callback(err,success);
+    })
+};
 
 module.exports.getJSONWithoutComments= function(text){
     var target= "/*", pos= 0;

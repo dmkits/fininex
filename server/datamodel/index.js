@@ -93,6 +93,7 @@ function initValidateDataModel(dataModelName, dataModel, errs, nextValidateDataM
     dataModel.setDataItem= _setDataItem;
     dataModel.getDataItemsForTable= _getDataItemsForTable;
     dataModel.getDataItemForTable= _getDataItemForTable;
+    dataModel._getTableColumnsDataForHTable= _getTableColumnsDataForHTable;
     dataModel.getDataForTable= _getDataForTable;
     dataModel.getDataForDocTable= _getDataForDocTable;
     dataModel.setDataItemForTable= _setDataItemForTable;
@@ -826,6 +827,7 @@ function _getTableColumnsDataForHTable(tableColumns){
     }
     return htTableColumns;
 }
+module.exports._getTableColumnsDataForHTable= _getTableColumnsDataForHTable;
 /**
  * params = { source,
  *      tableColumns = [

@@ -31,7 +31,7 @@ module.exports.init = function(app){
         //        "EmpID","EmpName","EmpRole"], withoutConditions:true},
         //    function(result){ callback(result.error,result.item);}
         //);
-        callback(null,{});
+        callback(null,{"EmpRole":"sysadmin"});
     };
     app.get("/sysadmin/sysState",function(req,res){
         var revalidateModules= false;

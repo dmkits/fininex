@@ -1,4 +1,4 @@
-var mssql= require('mssql');
+var mysql= require('mysql');
 var server= require('./server'), log= server.log;
 
 /**
@@ -30,35 +30,36 @@ function createNewUserDBConnection(userData, callback){
             errorMessage:"Не удалось подключиться к базе данных!<br> Нет параметров подключения к базе данных!<br> Обратитесь к системному администратору."});
         return;
     }
-    var dbUserConnection = new mssql.ConnectionPool({
-        userUUID:uuid,
-        user: userData.login,
-        password: userData.password,
-        server:   dbConfig.dbHost,
-        database: dbConfig.dbName,
-        pool: {
-            max: 100,
-            min: 0/*,
-            idleTimeoutMillis: 30000*/
-        }
-    },function(err){
-        var connectionData=connections[uuid];
-        if(err){                                                                                                log.error(uuid,userData.login,"database createNewUserDBConnection: Failed to create connection for user "+userData.login+" userData.uuid="+userData.uuid+ ". Reason: "+err);
-            if(connectionData){
-                connectionData.connection=null;
-                connectionData.user=userData.login;
-            }
-            callback({error:err.message,errorMessage:err.message});
-            return;
-        }
-        if(!connectionData)
-            connections[uuid]={ connection:dbUserConnection, user:userData.login };
-        else{
-            connectionData.connection=dbUserConnection;
-            connectionData.user=userData.login;
-        }
-        callback(null,{dbUC:dbUserConnection});
-    });
+    //var dbUserConnection = new mysql.ConnectionPool({
+    //    userUUID:uuid,
+    //    user: userData.login,
+    //    password: userData.password,
+    //    server:   dbConfig.dbHost,
+    //    database: dbConfig.dbName,
+    //    pool: {
+    //        max: 100,
+    //        min: 0/*,
+    //        idleTimeoutMillis: 30000*/
+    //    }
+    //},function(err){
+    //    var connectionData=connections[uuid];
+    //    if(err){                                                                                                log.error(uuid,userData.login,"database createNewUserDBConnection: Failed to create connection for user "+userData.login+" userData.uuid="+userData.uuid+ ". Reason: "+err);
+    //        if(connectionData){
+    //            connectionData.connection=null;
+    //            connectionData.user=userData.login;
+    //        }
+    //        callback({error:err.message,errorMessage:err.message});
+    //        return;
+    //    }
+    //    if(!connectionData)
+    //        connections[uuid]={ connection:dbUserConnection, user:userData.login };
+    //    else{
+    //        connectionData.connection=dbUserConnection;
+    //        connectionData.user=userData.login;
+    //    }
+    //    callback(null,{dbUC:dbUserConnection});
+    //});
+    callback({error:"No database!"});
 }
 module.exports.createNewUserDBConnection= createNewUserDBConnection;
 
@@ -112,12 +113,12 @@ function getFieldsTypes(recordset){
     var columns=recordset.columns, fieldsTypes={};
     for(var colName in columns){
         var column=columns[colName];
-        if(column.type===mssql.DateTime) fieldsTypes[colName]="datetime";
-        else if(column.type===mssql.SmallDateTime) fieldsTypes[colName]="datetime";
-        else if(column.type===mssql.VarChar) fieldsTypes[colName]="varchar";
-        else if(column.type===mssql.Bit) fieldsTypes[colName]="bit";
-        else if(column.type===mssql.Int) fieldsTypes[colName]="integer";
-        else if(column.type===mssql.Numeric) fieldsTypes[colName]="numeric";
+        if(column.type===mysql.DateTime) fieldsTypes[colName]="datetime";
+        else if(column.type===mysql.SmallDateTime) fieldsTypes[colName]="datetime";
+        else if(column.type===mysql.VarChar) fieldsTypes[colName]="varchar";
+        else if(column.type===mysql.Bit) fieldsTypes[colName]="bit";
+        else if(column.type===mysql.Int) fieldsTypes[colName]="integer";
+        else if(column.type===mysql.Numeric) fieldsTypes[colName]="numeric";
         else fieldsTypes[colName]="unknown";
     }
     return fieldsTypes;
@@ -132,7 +133,7 @@ function selectQuery(connection,query, callback){                               
         if(callback)callback({message:"No user database connection is specified."});
         return;
     }
-    var request = new mssql.Request(connection);
+    var request = new mysql.Request(connection);
     request.query(query,function(err,result){
         if(err){                                                                                                log.error(getConUUID(connection),getConU(connection),'database: selectQuery error:',err.message, {});
             callback(err); return;
@@ -151,7 +152,7 @@ module.exports.executeQuery= function(connection,query,callback){               
         callback({message:"No user database connection is specified."});
         return;
     }
-    var request = new mssql.Request(connection);
+    var request = new mysql.Request(connection);
     request.query(query,function(err,result){
         if(err){                                                                                                log.error(getConUUID(connection),getConU(connection),'database: executeQuery error:',err.message,{});
             callback(err); return;
@@ -169,7 +170,7 @@ function selectParamsQuery(connection,query, parameters, callback) {            
         callback({message:"No user database connection is specified."});
         return;
     }
-    var request = new mssql.Request(connection);
+    var request = new mysql.Request(connection);
     for(var i in parameters)request.input('p'+i,parameters[i]);
     request.query(query,function(err,result){
         if(err){                                                                                                log.error(getConUUID(connection),getConU(connection),'database: selectParamsQuery error:',err.message,{});
@@ -190,7 +191,7 @@ module.exports.executeParamsQuery= function(connection, query, parameters, callb
         callback({message:"No user database connection is specified."});
         return;
     }
-    var request = new mssql.Request(connection);
+    var request = new mysql.Request(connection);
     for(var i in parameters)request.input('p'+i,parameters[i]);
     request.query(query,function(err,result){
         if(err){                                                                                                //log.error(getConUUID(connection),getConU(connection),'database: executeParamsQuery error:',err.message,err.precedingErrors,{});//test

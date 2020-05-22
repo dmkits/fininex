@@ -1,5 +1,5 @@
-{ "appID":"sinta", "appVer":"3.3.3", "appCVer":"3.3",
-  "title":"SINTA.UA",
+{ "appID":"fninex", "appVer":"1.0.0", "appCVer":"1.0",
+  "title":"FININEX.UA",
   "icon32x32":"/imgs/ico32-logo-GS-red-min-whiteBG-77x32.jpg",
   "imageSmall":"/imgs/logo-pageTitle-GS-red-small-129x54.jpg",
   "imageMain":"/imgs/logo-pageTitle-GS-red-small-129x54.jpg",
@@ -7,30 +7,12 @@
     "sysadmin",
     "print",
     "system",
-    "main",
-    "commonDirs",
-    "commonDirsForDocs",
-    "commonDirsForProds",
-    "commonDocsProdsRec",
-    /*"doc_rec",*/
-    "doc_exc",
-    "doc_excCashier",
+    "main"
     /*"mainPage",*/
-    "rep_products",
-    "rep_cashier",
-    "mobile",
-    "mDoc_Ven",
-    "mDoc_ExcDelivery",
-    "mDoc_ExcFromStock",
-    "mDoc_RecBtk",
-    "mRep_Cashier"
   ],
   "appMenu":[
     /*{ "menuItemName":"menuBarItemRec", "menuTitle":"Приход товара", "pageTitle":"Приход товара", "module":"doc_rec", "closable":false },*/
     /*{ "menuItemName":"menuBarItemExc", "menuTitle":"Перемещение товара", "pageTitle":"Перемещение товара", "module":"doc_exc", "closable":true },*/
-    { "menuItemName":"menuBarItemExcCashier", "menuTitle":"Перемещение товара на ТТ", "pageTitle":"Перемещение товара на ТТ", "module":"doc_excCashier", "closable":true },
-    { "menuItemName":"menuBarItemReportsProds", "menuTitle":"Товарные отчеты", "pageTitle":"Товарные отчеты", "module":"rep_products", "closable":false },
-    { "menuItemName":"menuBarItemReportsCashier", "menuTitle":"Отчеты кассира", "pageTitle":"Отчеты кассира", "module":"rep_cashier", "closable":false },
     { "menuItemName":"menuBarItemHelpAbout", "menuTitle":"О программе", "action":"help_about" },
     { "menuItemName":"menuBarItemClose", "menuTitle":"Выход", "action":"close" }
   ],
@@ -40,37 +22,23 @@
       "autorun":["menuBarItemExcCashier","menuBarItemExc","menuBarItemRec"],
       "mobile":["mRep_Cashier","mDoc_Ven"]
     },
-    "manager":{
+    "director":{
       "menu":["menuBarItemReportsCashier","menuBarItemRec","menuBarItemExc","menuBarItemExcCashier","menuBarItemHelpAbout","menuBarItemClose"],
       "autorun":["menuBarItemReportsCashier","menuBarItemExcCashier"],
       "mobile":["mDoc_Ven","mDoc_RecBtk","mRep_Cashier"]
     },
-    "operatorRec":{
+    "finG1":{
       "menu":["menuBarItemRec","menuBarItemHelpAbout","menuBarItemClose"],
       "autorun":["menuBarItemRec"],
       "mobile":["mDoc_Rec"]
     },
-    "excDelivery":{
+    "finG2":{
       "menu":["menuBarItemExcCashier","menuBarItemHelpAbout","menuBarItemClose"],
       "autorun":["menuBarItemExcCashier"],
       "mobile":["mDoc_ExcDelivery"]
     },
-    "excFromStock":{
+    "finG3":{
       "menu":["menuBarItemHelpAbout","menuBarItemClose"],
       "mobile":["mDoc_ExcFromStock"]
-    },
-    "createRec":{
-      "menu":["menuBarItemHelpAbout","menuBarItemClose"],
-      "mobile":["mDoc_RecBtk"]
-    },
-    "inventory":{
-      "menu":["menuBarItemHelpAbout","menuBarItemClose"],
-      "mobile":["mDoc_Ven"]
-    },
-    "cashier":{
-      "menu":["menuBarItemReportsCashier","menuBarItemExcCashier","menuBarItemHelpAbout","menuBarItemClose"],
-      "autorun":["menuBarItemReportsCashier","menuBarItemExcCashier"],
-      "mobile":["mRep_Cashier"]
-    }
-  }
+    }}
 }

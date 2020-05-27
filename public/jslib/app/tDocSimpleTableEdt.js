@@ -15,6 +15,16 @@ define(["dojo/_base/declare", "app/tDocsFunctions", "app/base", "app/tDocSimpleT
                 declare.safeMixin(this,args);
                 if(args.rightPane&& typeof(args.rightPane)=="object") this.rightContainerParams=args.rightPane;
             },
+            /**
+             * params: { titleText, dataURL, dataURLCondition={...},
+            *            rightPane:{ width:<width>, ... },
+            *            buttonUpdate, buttonPrint, buttonExportToExcel,
+            *            printFormats={ ... } ,
+            *            dataNewURL, dataStoreURL, dataDeleteURL }
+             */
+            init: function(params){
+                return this.inherited(arguments,[params]);
+            },
             postCreate: function(){
                 this.createTopContent();
                 this.createContentTable(HTableEditable, {readOnly:false,allowFillHandle:true});

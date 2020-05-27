@@ -30,8 +30,7 @@ define(["dojo/_base/declare", "dijit/layout/BorderContainer", "app/tDocsFunction
              * params: { titleText, dataURL, dataURLCondition={...},
             *            rightPane:{ width:<width>, ... },
             *            buttonUpdate, buttonPrint, buttonExportToExcel,
-            *            printFormats={ ... } or other.
-            *  }
+            *            printFormats={ ... } or other. }
             */
             init: function(params){
                 if(!params)return this;

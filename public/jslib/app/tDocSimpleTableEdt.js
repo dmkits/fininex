@@ -95,6 +95,7 @@ define(["dojo/_base/declare", "app/tDocsFunctions", "app/base", "app/tDocSimpleT
                 if(actionParams&&actionParams.actionName=="insertTableRow"){
                     actionFunction= function(){
                         thisInstance.contentHTable.insertRowAfterSelected();
+                        thisInstance.contentHTable.setSelectedRowByIndex(thisInstance.contentHTable.getSelectedRowIndex()+1);
                         if(thisInstance.dataNewURL)
                             thisInstance.contentHTable.getRowDataFromURL({url:thisInstance.dataNewURL, condition:null,
                                 rowData:thisInstance.contentHTable.getSelectedRow(), consoleLog:true, callUpdateContent:false});

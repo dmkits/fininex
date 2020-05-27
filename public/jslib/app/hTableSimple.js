@@ -161,9 +161,14 @@ define(["dojo/_base/declare", "dijit/layout/ContentPane","dojox/widget/Standby",
                         }else{
                             Handsontable.cellTypes[cellProperties.type].renderer.apply(this, arguments);
                             if(cellProperties["type"]==="text"&&cellProperties["datetimeFormat"]){
-                                if(value!==null&&value!==undefined)
-                                    td.innerHTML= moment.parseZone(new Date(value) /*value,"YYYY-MM-DD"*/).utc().format(cellProperties["datetimeFormat"]);
-                                else td.innerHTML="";
+                                if(value!==null&&value!==undefined){
+                                    var datetimeFormat= cellProperties["datetimeFormat"];//value,"YYYY-MM-DD" or "YYYY-MM-DD HH:mm:ss"
+                                    if(typeof(value)=="string"&&value.indexOf("T")<0&&value.indexOf("Z")<0)
+                                        td.innerHTML= moment(value).format(datetimeFormat);
+                                    //else if(typeof(value)=="string"&&value.indexOf("T")>=0&&value.indexOf("Z")==value.length-1)
+                                    //    td.innerHTML= moment.parseZone(new Date(value)).utc().format(datetimeFormat);//OFF for DB MySQL
+                                    else td.innerHTML= moment(value).format(datetimeFormat);
+                                }
                             }
                             if(cellProperties["align"]){
                                 if(cellProperties["align"]=="left") td.setAttribute("style","text-align:left");

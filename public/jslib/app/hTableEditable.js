@@ -331,7 +331,7 @@ define(["dojo/_base/declare", "app/hTableSimpleFiltered", "dijit/ProgressBar","d
                 this.setSelection(newSelectedRow,newSelection);
                 if(params&&params.callUpdateContent===false) return;
                 var rowsData=[]; rowsData[0]=deleteRowData;
-                this.updateContent({deletedRows:rowsData});
+                this.onUpdateContent({deletedRows:rowsData});
             },
             /**
              * params: { filtered, updatedRows, insertedRows, deletedRows }

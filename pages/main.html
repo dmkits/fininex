@@ -70,8 +70,8 @@
                 $$.main_modeName.innerHTML+= "<b>UNKNOWN!!!</b>";
                 $$.main_modeName.setAttribute("title","UNKNOWN!");
             }
-            $$.sysadmin_appUser.innerHTML= "<b>Пользователь: <span style='color:dimgrey'>"+result.dbUserName;
-            $$.sysadmin_appUser.setAttribute("title",result.dbUserName+sDBUserPostfix);
+            $$.sysadmin_appUser.innerHTML= "<b>Пользователь: <span style='color:dimgrey'>"+result.appUserName;
+            $$.sysadmin_appUser.setAttribute("title",result.appUserName+sDBUserPostfix);
             setBrending(result.appConfig);
         };
         var closeAction= function(menuItemData){

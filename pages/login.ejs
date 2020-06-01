@@ -12,12 +12,12 @@
             <div id="loginDialogDiv" style="width:250px; padding:4px"><%-loginMsg%></div>
             <table id="auth_admin_dialog_table" width="240px">
                 <tr>
-                    <td><label for="user_name">Имя:</label></td>
-                    <td><input type="text" name="user_name" id="user_name"></td>
+                    <td><label for="login">Имя:</label></td>
+                    <td><input type="text" name="login" id="login"></td>
                 </tr>
                 <tr>
-                    <td><label for="user_password">Пароль:</label></td>
-                    <td><input type="password" name="user_password" id="user_password"></td>
+                    <td><label for="loginpswrd">Пароль:</label></td>
+                    <td><input type="password" name="loginpswrd" id="loginpswrd"></td>
                 </tr>
             </table>
         </ConfirmDialog>
@@ -29,8 +29,8 @@
         $$.loginDialog.set("buttonOk","Войти");
         $$.loginDialog.set("buttonCancel","Отмена");
         $$.loginDialog.onExecute= function(){
-            var user= $$.user_name.value.trim(), pswrd= $$.user_password.value.trim();
-            $$.request.postJSON({url:"/login", data:{user:user,pswrd:pswrd}, consoleLog:true},function(result,error){
+            var login= $$.login.value.trim(), pswrd= $$.loginpswrd.value.trim();
+            $$.request.postJSON({url:"/login", data:{login:login,pswrd:pswrd}, consoleLog:true},function(result,error){
                 if(error||!result||result.error){
                     error= error||(result&&result.error)?result.error:{error:"UNKNOWN! NO RESULT!"};
                     var errMsg= error.userMessage||error.message||error.error;

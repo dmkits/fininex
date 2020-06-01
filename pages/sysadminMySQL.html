@@ -35,7 +35,7 @@
     <StackContainer id="sysadmin_ContentContainer" region="center" tabPosition="top" childIconClass="dijitCheckBoxIcon">
         <InnerPage title="System config" iconClass="dijitCheckBoxIcon" href="/sysadmin/sysConfig"></InnerPage>
         <InnerPage title="Database" iconClass="dijitCheckBoxIcon" href="/sysadmin/database" style="margin:0;padding:0;"></InnerPage>
-        <InnerPage title="Logins" iconClass="dijitCheckBoxIcon" href="/sysadmin/logins" style="margin:0;padding:0;"></InnerPage>
+        <InnerPage title="UsersAndLogins" iconClass="dijitCheckBoxIcon" href="/sysadmin/usersLoginsMySQL" style="margin:0;padding:0;"></InnerPage>
         <InnerPage title="Logs" iconClass="dijitCheckBoxIcon" href="/sysadmin/logs" style="margin:0;padding:0;"></InnerPage>
     </StackContainer>
 </page>
@@ -97,13 +97,13 @@
                     }
                     $$.sysadmin_appPort.innerHTML="<b>APP PORT: </b><b style='color:dimgrey'>"+result.port+"</b>";
                     $$.sysadmin_appPort.setAttribute("title",result.port);
-                    if(result.dbUserError){
-                        $$.sysadmin_appUser.innerHTML="<b>APP USER: <span style='color:dimgrey'>("+result.dbUserName+") </span>"+
-                                "<span style='color:red'>"+result.dbUserError+"</span></b>";
-                        $$.sysadmin_appUser.setAttribute("title","("+result.dbUserName+") "+result.dbUserError);
+                    if(result.appUserError){
+                        $$.sysadmin_appUser.innerHTML="<b>APP USER: <span style='color:dimgrey'>("+result.appUserName+") </span>"+
+                                "<span style='color:red'>"+result.appUserError+"</span></b>";
+                        $$.sysadmin_appUser.setAttribute("title","("+result.appUserName+") "+result.appUserError);
                     }else{
-                        $$.sysadmin_appUser.innerHTML="<b>APP USER: <span style='color:dimgrey'>"+result.dbUserName+"</span></b>";
-                        $$.sysadmin_appUser.setAttribute("title",result.dbUserName);
+                        $$.sysadmin_appUser.innerHTML="<b>APP USER: <span style='color:dimgrey'>"+result.appUserName+"</span></b>";
+                        $$.sysadmin_appUser.setAttribute("title",result.appUserName);
                     }
                     if(!result.sysConfig)result.sysConfig={};
                     $$.sysadmin_dbName.innerHTML="<b>DB NAME: <span style='color:dimgrey'>"+result.sysConfig.dbName+"</span></b>";

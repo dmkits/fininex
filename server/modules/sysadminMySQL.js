@@ -7,38 +7,46 @@ var server= require('../server'), getLoadInitModulesError= server.getLoadInitMod
 var systemFuncs= require('../systemFuncs');
 var appModules= require(appModulesPath), getDBValidateError= appModules.getValidateError, dataModel= require(appDataModelPath),
     changeLog= require(appDataModelPath+"change_log");
+var dir_employees= require(appDataModelPath+"dir_employees");
 //var querySysDBUserInfo= require(appDataModelPath+"querySysDBUserInfo");
 //var r_Users= require(appDataModelPath+"r_Users"), ir_UserData= require(appDataModelPath+"ir_UserData"),
-//    r_Emps= require(appDataModelPath+"r_Emps"), r_Uni= require(appDataModelPath+"r_Uni"),
+//    , r_Uni= require(appDataModelPath+"r_Uni"),
 //    sysusers= require(appDataModelPath+"sysusers"), sys_server_principals= require(appDataModelPath+"sys_server_principals");
 
 module.exports.validateModule = function(errs,nextValidateModuleCallback){
-    dataModel.initValidateDataModels([/*querySysDBUserInfo, changeLog,r_Users,ir_UserData,r_Emps,r_Uni,sysusers,sys_server_principals*/], errs,
+    dataModel.initValidateDataModels([/*querySysDBUserInfo,*/ changeLog, dir_employees/*,r_Users,ir_UserData,r_Uni,sysusers,sys_server_principals*/], errs,
         function(){ nextValidateModuleCallback(); });
 };
 
 module.exports.modulePageURL = "/sysadmin";
-module.exports.modulePagePath = "sysadmin.html";
+module.exports.modulePagePath = "sysadminMySQL.html";
 module.exports.init = function(app){
     /**
      * call in access module
-     * callback = function(<error message>,{<database user parameters>})
+     * callback = function(<error message>,<application user data and parameters from database>)
+     *      <application user data and parameters from database> = { appUserName, appUserRole, <other parameters> }
      */
-    module.exports.getDBUserData= function(dbUC,callback){
-        //querySysDBUserInfo.getDataItem(dbUC,
-        //    {fields:["dbUserName","GMS_DBVersion","OT_DBiID",
-        //        "t_OurID","t_OneOur","OT_MainOurID","z_CurrMC","z_CurrCC","t_StockID","t_OneStock","it_MainStockID","t_SecID","DefaultUM",
-        //        "EmpID","EmpName","EmpRole"], withoutConditions:true},
-        //    function(result){ callback(result.error,result.item);}
-        //);
-        callback(null,{"EmpRole":"sysadmin"});
+    module.exports.getAppUserData= function(dbUC,login,callback){
+        dir_employees.getDataItem(dbUC,{fields:["NAME","FULL_NAME","NOTE","POST","ROLENAME"], conditions:{"LOGIN=":login}},
+            function(result){
+                if(result.error||!result.item){
+                    callback((result.error)?"FAILED get DB user data! Reason: "+result.error:"NO DB user data by login!");
+                    return;
+                }
+                var dbUserData={}, resultItem= result.item;
+                dbUserData["appUserName"]= resultItem["NAME"]; dbUserData["appUserRole"]= resultItem["ROLENAME"];
+                dbUserData["appUserFullName"]= resultItem["FULL_NAME"]; dbUserData["appUserNote"]= resultItem["NOTE"];
+                dbUserData["appUserPost"]= resultItem["POST"];
+                callback(null,dbUserData);
+            }
+        );
     };
     app.get("/sysadmin/sysState",function(req,res){
         var revalidateModules= false;
         if(req.query&&req.query["revalidate"]) revalidateModules= true;
-        var outData= {mode:appStartupParams.mode, port:appStartupParams.port, dbUserName:req.dbUserName},
+        var outData= {mode:appStartupParams.mode, port:appStartupParams.port, appUserName:req.appUserName},
             sysConfig=getSysConfig();
-        if(req.dbUserError)outData.dbUserError=req.dbUserError;
+        if(req.appUserError) outData.appUserError=req.appUserError;
         if(!sysConfig||sysConfig.error){
             outData.error= (sysConfig&&sysConfig.error)?sysConfig.error:"unknown";
             res.send(outData);
@@ -79,13 +87,9 @@ module.exports.init = function(app){
         res.send(sysConfig);
     });
     app.get("/sysadmin/sysConfig/getDBList",function(req,res){
-        appDatabase.selectQuery(appDatabase.getDBSystemConnection(),
-            "select	name from sys.databases "+
-            "where name not in ('master','tempdb','model','msdb') and is_distributor = 0 and source_database_id is null "+
-            "order by name",
-            function(err,recordset){
-                if(err){ res.send({error:err.message}); return; }
-                res.send({dbList:recordset});
+        appDatabase.getDatabasesForUser(req.dbUC,getSysConfig(),function(err,dbList,dbUser){
+            if(err){ res.send({error:err.message}); return; }
+            res.send({dbList:dbList});
         });
     });
     app.get("/sysadmin/sysConfig/loadSysConfig",function(req,res){
@@ -177,8 +181,8 @@ module.exports.init = function(app){
     ];
     app.get("/sysadmin/database/getCurrentChanges",function(req,res){
         var outData = { columns:changesTableColumns, identifier:changesTableColumns[0].data, items:[] };
-        checkIfChangeLogExists(function(tableData){
-            if(tableData.error&&  tableData.error.indexOf("Invalid object name")>=0){
+        checkIfChangeLogExists(function(tableData){                                            console.log("tableData",tableData);
+            if(tableData.error&&  tableData.error.indexOf("ER_NO_SUCH_TABLE")>=0){
                 outData.noTable = true;
                 var arr=dataModel.getModelChanges(), items=systemFuncs.sortArray(arr);
                 for(var i in items){
@@ -191,7 +195,7 @@ module.exports.init = function(app){
                 return;
             }
             if(tableData.error){ outData.error= tableData.error; res.send(outData); return; }
-            var arr=dataModel.getModelChanges(), logsData= systemFuncs.sortArray(arr);
+            var arr= dataModel.getModelChanges(), logsData= systemFuncs.sortArray(arr);                                            console.log("arr",arr);
             matchLogData(logsData, outData, 0, function(outData){ res.send(outData); });
         });
     });
@@ -223,8 +227,7 @@ module.exports.init = function(app){
             if(modelChange.changeID==ID){ rowData=modelChange; CHANGE_VAL=modelChange.changeVal; break; }
         }
         checkIfChangeLogExists(function(result){
-           // if (result.error && (result.errorCode == "ER_NO_SUCH_TABLE")) {
-            if (result.error&&  result.error.indexOf("Invalid object name")>=0) {  log.info("checkIfChangeLogExists  tableData.error:",result.error);
+            if(result.error&&result.errorCode=="ER_NO_SUCH_TABLE"){
                 appDatabase.executeQuery(appDatabase.getDBSystemConnection(),CHANGE_VAL,function (err){
                     if(err){ outData.error = err.message; res.send(outData); return; }
                     insertToChangeLog({"ID":modelChange.changeID,
@@ -272,47 +275,86 @@ module.exports.init = function(app){
         });
     });
 
-    app.get("/sysadmin/logins",function(req,res){
-        res.sendFile(appPagesPath+'sysadmin/logins.html');
+    app.get("/sysadmin/usersLoginsMySQL",function(req,res){
+        res.sendFile(appPagesPath+'sysadmin/usersLoginsMySQL.html');
     });
     var userVisiblePass="****************",
-        loginsTableColumns=[
-            {data:"UserID", name:"UserID", width:65, type:"numeric",align:"center", readOnly:true, visible:false},
-            {data:"UserName", name:"User name", width:220, type:"text", readOnly:true},
-            {data:"EmpID", name:"EmpID", width:65, type:"numeric",align:"center", dataSource:"r_Users", readOnly:true, visible:false},
-            {data:"EmpName", name:"Employee name", width:300, type:"text", readOnly:true,
-                dataSource:"r_Emps",linkCondition:"r_Emps.EmpID=r_Users.EmpID"},
-            {data:"ShiftPostID", name:"User role ID", width:60, align:"center", dataSource:"r_Emps", visible:false},
-            {data:"ShiftPostName", name:"User role", width:280,
-                dataSource:"r_Uni", sourceField:"RefName", linkCondition:"r_Uni.RefTypeID=10606 and r_Uni.RefID=r_Emps.ShiftPostID",
-                type:"combobox", sourceURL:"/sysadmin/logins/getDataForUserRoleCombobox"},
-            {data:"ShiftPostNotes", name:"User role alias", width:100, dataSource:"r_Uni", sourceField:"Notes", type:"text", readOnly:true, visible:false },
-            {data:"suname", name:"DB User Name", width:220, type:"text", readOnly:true, visible:false,
-                childDataSource:"sysusers", sourceField:"name",
-                childLinkCondition:"sysusers.islogin=1 and (sysusers.name=r_Users.UserName or (sysusers.Name='dbo' and r_Users.UserName='sa'))"},
-            {data:"login", name:"login", width:150, type:"text", readOnly:true,
-                childDataSource:"sys.server_principals", sourceField:"name",
-                childLinkCondition:"sys.server_principals.type in ('S','U') and sys.server_principals.sid=sysusers.sid"},
-            {data:"lPass", name:"Password", width:100, type:"text",
-                dataSource:"sys.server_principals", dataFunction:"CASE When sys.server_principals.sid is Null Then '' else '"+userVisiblePass+"' END"},
-            {data:"PswrdNote", name:"Password note", width:100, type:"text", readOnly:true, visible:true,
-                childDataSource:"ir_UserData", sourceField:"pswrdNote",
-                childLinkCondition:"ir_UserData.UserID=r_Users.UserID"},
-            {data:"is_disabled", name:"Disabled", width:75, type:"checkboxMSSQL",
-                dataSource:"sys.server_principals", sourceField:"is_disabled"}
+        appUsersLoginsTableColumns=[
+            {data:"ID", name:"Идент.", width:65, type:"numeric",align:"center", readOnly:true, visible:false},
+            {data:"NAME", name:"Employee name", width:150, type:"text"},
+            //{data:"EmpID", name:"EmpID", width:65, type:"numeric",align:"center", dataSource:"r_Users", readOnly:true, visible:false},
+            {data:"FULL_NAME", name:"Employee full name", width:250, type:"text"},
+            {data:"NOTE", name:"Employee note", width:300, type:"text"},
+            {data:"POST", name:"Employee post", width:150, type:"text"},
+            {data:"ROLENAME", name:"User role", width:120, type:"text",align:"center",
+                type:"combobox", sourceURL:"/sysadmin/usersLoginsMySQL/getDataForUserRoleNameCombobox"},
+            {data:"LOGIN", name:"user login", width:120, type:"text",align:"center",
+                type:"comboboxWN", sourceURL:"/sysadmin/usersLoginsMySQL/getDataForUserLoginCombobox"},
+            {data:"LOGINPSWRD", name:"user login pass", width:150, type:"text",align:"center"}
+            //{data:"ShiftPostID", name:"User role ID", width:60, align:"center", dataSource:"r_Emps", visible:false},
+            //{data:"ShiftPostName", name:"User role", width:280,
+            //    dataSource:"r_Uni", sourceField:"RefName", linkCondition:"r_Uni.RefTypeID=10606 and r_Uni.RefID=r_Emps.ShiftPostID",
+            //    type:"combobox", sourceURL:"/sysadmin/logins/getDataForUserRoleCombobox"},
+            //{data:"ShiftPostNotes", name:"User role alias", width:100, dataSource:"r_Uni", sourceField:"Notes", type:"text", readOnly:true, visible:false },
+            //{data:"suname", name:"DB User Name", width:220, type:"text", readOnly:true, visible:false,
+            //    childDataSource:"sysusers", sourceField:"name",
+            //    childLinkCondition:"sysusers.islogin=1 and (sysusers.name=r_Users.UserName or (sysusers.Name='dbo' and r_Users.UserName='sa'))"},
+            //{data:"login", name:"login", width:150, type:"text", readOnly:true,
+            //    childDataSource:"sys.server_principals", sourceField:"name",
+            //    childLinkCondition:"sys.server_principals.type in ('S','U') and sys.server_principals.sid=sysusers.sid"},
+            //{data:"lPass", name:"Password", width:100, type:"text",
+            //    dataSource:"sys.server_principals", dataFunction:"CASE When sys.server_principals.sid is Null Then '' else '"+userVisiblePass+"' END"},
+            //{data:"PswrdNote", name:"Password note", width:100, type:"text", readOnly:true, visible:true,
+            //    childDataSource:"ir_UserData", sourceField:"pswrdNote",
+            //    childLinkCondition:"ir_UserData.UserID=r_Users.UserID"},
+            //{data:"is_disabled", name:"Disabled", width:75, type:"checkboxMSSQL",
+            //    dataSource:"sys.server_principals", sourceField:"is_disabled"}
     ];
-    //app.get('/sysadmin/logins/getLoginsDataForTable',function(req,res){
-    //    r_Users.getDataForTable(req.dbUC,{tableColumns:loginsTableColumns, identifier:loginsTableColumns[0].data,
-    //            conditions:{"1=1":null}, order:"UserID"},
-    //        function(result){ res.send(result); });
-    //});
-    app.get('/sysadmin/logins/getDataForUserRoleCombobox', function(req,res){  //ShiftPostID
-        r_Uni.getDataItemsForTableCombobox(req.dbUC,{ comboboxFields:{"ShiftPostName":"RefName","ShiftPostID":"RefID" },
-                source:"r_Uni",fields:["RefID","RefName"],
-                order:"RefName",
-                conditions:{"RefTypeID=":10606}},
+    app.get('/sysadmin/usersLoginsMySQL/getAppUsersLoginsDataForTable',function(req,res){
+        dir_employees.getDataForTable(req.dbUC,{tableColumns:appUsersLoginsTableColumns, identifier:appUsersLoginsTableColumns[0].data,
+                conditions:{"1=1":null}, order:"ID"},
             function(result){ res.send(result); });
     });
+    var appUserRoles=[], appConfig= getAppConfig();
+    if(appConfig["usersRoles"])
+        for(var appUserRoleName in appConfig["usersRoles"]) appUserRoles.push({"ROLENAME":appUserRoleName});
+    app.get('/sysadmin/usersLoginsMySQL/getDataForUserRoleNameCombobox', function(req,res){
+        res.send({ items:appUserRoles});
+    });
+    app.get('/sysadmin/usersLoginsMySQL/getDataForUserLoginCombobox', function(req,res){
+        dataModel.getSelectItems(req.dbUC,{source:"mysql.user",sourceType:"table",fields:["user"],groupedFields:["user"]},
+            function(err,recordset){
+                if(err){                                                                                        log.error("FAILED getDataForUserLoginCombobox! Reason: "+err);
+                    res.send([]); return;
+                }
+                var logins=[];
+                for(var loginData of recordset) logins.push({"LOGIN":loginData["user"]});
+                res.send({ items:logins});
+            });
+    });
+
+    app.get("/sysadmin/usersLoginsMySQL/newDataForAppUsersLoginsTable", function(req,res){
+        dir_employees.setDataItemForTable({tableColumns:appUsersLoginsTableColumns,
+                values:[null,"Новый сотрудник","Новый сотрудник","Новый сотрудник","Должность нового сотрудника","Роль нового сотрудника","Логин нового сотрудника",""]},
+            function(result){ res.send(result); });
+    });
+    app.post("/sysadmin/usersLoginsMySQL/storeAppUsersLoginsTableData", function(req,res){
+        dir_employees.storeTableDataItem(req.dbUC,{tableColumns:appUsersLoginsTableColumns, idFieldName:appUsersLoginsTableColumns[0].data,
+                storeTableData:req.body},
+            function(result){
+
+
+
+                res.send(result);
+            });
+    });
+    app.post("/sysadmin/usersLoginsMySQL/deleteAppUsersLoginsTableData", function(req,res){
+        dir_employees.delTableDataItem(req.dbUC,{idFieldName:appUsersLoginsTableColumns[0].data, delTableData:req.body},
+            function(result){                                            console.log("result",result);
+                res.send(result);
+            });
+    });
+
     ///**
     // * callback = function(result,login,lpass,suname)
     // */
@@ -496,7 +538,7 @@ module.exports.init = function(app){
     //        });
     //    });
     //};
-    app.post("/sysadmin/logins/storeLoginsTableData",function(req,res){
+    app.post("/sysadmin/loginsMySQL/storeLoginsTableData",function(req,res){
         var tLoginData=req.body;
         r_Users.checkLoginPassDBUser(req.dbUC,tLoginData,function(result,login,lpass,suname){
             if(result.error){ res.send(result); return; }

@@ -10,7 +10,7 @@ module.exports.moduleViewURL = "/docs/fin";
 module.exports.moduleViewPath = "docs/fin.html";
 module.exports.init = function(app){
     //app.get("/reports/cashier/getDirCRsForSelect", function(req, res){
-    //    var empID=req.dbUserParams["EmpID"];
+    //    var empID=req.appUserDataParams["EmpID"];
     //    r_CRs.getDataItemsForSelect(req.dbUC,
     //        {valueField:"CRID",labelField:"CRName",
     //            joinedSources: {
@@ -143,7 +143,7 @@ module.exports.init = function(app){
     });
 
     //app.get("/reports/cashier/getDirStocksForSelect", function(req, res){
-    //    var empID=req.dbUserParams["EmpID"];
+    //    var empID=req.appUserDataParams["EmpID"];
     //    r_Stocks.getDataItemsForSelect(req.dbUC,
     //        {valueField:"StockID",labelField:"StockName",
     //            joinedSources: {

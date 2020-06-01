@@ -47,8 +47,8 @@ module.exports.modulePagePath = "main.html";
 module.exports.init= function(app){
     app.get("/getMainData", function(req,res){
         var outData= {mode:appParams.mode, modeStr:appParams.mode};
-        outData.dbUserName=(req.dbUserName)?req.dbUserName:"unknown";
-        outData.EmpName=(req.dbUserParams&&req.dbUserParams["EmpName"])?req.dbUserParams["EmpName"]:"unknown";
+        outData.appUserName= req.appUserName||"unknown";
+        outData.EmpName=(req.appUserDataParams&&req.appUserDataParams["appUserName"])?req.appUserDataParams["appUserName"]:"unknown";
         var appConfig=getAppConfig(); outData.appConfig=appConfig;
         if(!appConfig||appConfig.error){
             outData.error= "Failed load application configuration!"+(appConfig&&appConfig.error)?" Reason:"+appConfig.error:"";

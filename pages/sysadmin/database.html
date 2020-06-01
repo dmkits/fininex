@@ -16,18 +16,18 @@
 </LayoutContainer>
 <script type="text/javascript">                                                                             log("sysadmin database $$",$$);//!!!IT'S FOR TESTING!!!
     $$.sadb_TDocDBCurrentChanges
-            .init({titleText:"Data model current changes", dataURL:"/sysadmin/database/getCurrentChanges", buttonPrint:false, rightPane:{width:200}})
+            .init({titleText:"Data model current changes", dataURL:"/sysadmin/database/getCurrentChanges", buttonPrint:false, rightPane:{width:300}})
             .addTotalCountNumberBox("ИТОГО строк:", 140, {style:"font-weight:bold;",inputStyle:"width:40px;"})
             .addToolPane({title:"info",
                 contentTableAction:function(params){
                     var info="";
-                    if(params.contentTableSelectedRow){
-                        info+="<b>changeID</b>: "+params.contentTableSelectedRow["changeID"];
-                        info+="<br><b>changeDatetime</b>: "+params.contentTableSelectedRow["changeDatetime"];
-                        info+="<br><b>changeObj</b>: "+params.contentTableSelectedRow["changeObj"];
-                        info+="<br><b>changeVal</b>: "+params.contentTableSelectedRow["changeVal"];
-                        info+="<br><b>type</b>: "+params.contentTableSelectedRow["type"];
-                        info+="<br><b>message</b>: "+params.contentTableSelectedRow["message"];
+                    if(params.contentHTableSelectedRow){
+                        info+="<b>changeID</b>: "+params.contentHTableSelectedRow["changeID"];
+                        info+="<br><b>changeDatetime</b>: "+params.contentHTableSelectedRow["changeDatetime"];
+                        info+="<br><b>changeObj</b>: "+params.contentHTableSelectedRow["changeObj"];
+                        info+="<br><b>changeVal</b>: "+params.contentHTableSelectedRow["changeVal"];
+                        info+="<br><b>type</b>: "+params.contentHTableSelectedRow["type"];
+                        info+="<br><b>message</b>: "+params.contentHTableSelectedRow["message"];
                     }
                     params.thisToolPane.set("content",info);
                 }
@@ -103,7 +103,20 @@
                 }
             });
     $$.sadb_TDocDBChangeLog
-            .init({titleText:"database change log", dataURL:"/sysadmin/database/getChangeLog", dataURLCondition:{"1~":1}, buttonPrint:false})
+            .init({titleText:"database change log", dataURL:"/sysadmin/database/getChangeLog", dataURLCondition:{"1~":1}, buttonPrint:false, rightPane:{width:300}})
+            .addToolPane({title:"info",
+                contentTableAction:function(params){
+                    var info="";
+                    if(params.contentHTableSelectedRow){
+                        info+="<b>changeID</b>: "+params.contentHTableSelectedRow["ID"];
+                        info+="<br><b>changeDatetime</b>: "+params.contentHTableSelectedRow["CHANGE_DATETIME"];
+                        info+="<br><b>changeObj</b>: "+params.contentHTableSelectedRow["CHANGE_OBJ"];
+                        info+="<br><b>changeVal</b>: "+params.contentHTableSelectedRow["CHANGE_VAL"];
+                        info+="<br><b>appliedDatetime</b>: "+params.contentHTableSelectedRow["APPLIED_DATETIME"];
+                    }
+                    params.thisToolPane.set("content",info);
+                }
+            })
             .addTotalCountNumberBox("ИТОГО строк:", 140, {style:"font-weight:bold;",inputStyle:"width:40px;"});
 
     $$.sadb_TDocDBCurrentChanges.onShow= function(){

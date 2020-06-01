@@ -3,7 +3,7 @@ var server= require("./server"), log= server.log,
     appStartupParams= server.getAppStartupParams(), getSysConfig= server.getSysConfig,
     getAppConfigName= server.getAppConfigName, getAppConfig= server.getAppConfig, appDatabase= server.appDatabase,
     systemFuncs= require("./systemFuncs"),
-    appModules= require(appModulesPath), sysadmin= require(appModulesPath+"sysadmin");
+    appModules= require(appModulesPath), sysadmin= require(appModulesPath+"sysadminMySQL");
 
 var sysadminsList={};
 
@@ -101,7 +101,7 @@ module.exports= function(app){
             }
         }
     };
-    var getSysadminNameByUUID= function(uuid){
+    var getSysadminLoginByUUID= function(uuid){
         if(!sysadminsList) return;
         for(var saUUID in sysadminsList)
             if(saUUID==uuid) return sysadminsList[saUUID];
@@ -114,7 +114,7 @@ module.exports= function(app){
         if(req.originalUrl.indexOf("/login")==0){ next(); return; }                                             //log.info("ACCESS CONTROLLER: req.headers=",req.headers," req.cookies=",req.cookies,{});
         var reqAIDCN= (isMobileApp)?req.headers['aidcn']:req.cookies['aidcn'], aidcn= getAIDCN(),
             uuid= (isMobileApp)?req.headers['uuid']:req.cookies['uuid'],
-            sysadminName= getSysadminNameByUUID(uuid);                                                          log.info(uuid,"ACCESS CONTROLLER:",req.method,req.path,"params=",req.query,"data=",req.body);//log.info("ACCESS CONTROLLER: req.headers=",req.headers,"req.cookies=",req.cookies,{});
+            sysadminLogin= getSysadminLoginByUUID(uuid);                                                          log.info(uuid,"ACCESS CONTROLLER:",req.method,req.path,"params=",req.query,"data=",req.body);//log.info("ACCESS CONTROLLER: req.headers=",req.headers,"req.cookies=",req.cookies,{});
         if(reqAIDCN===undefined||reqAIDCN===null){
             accessFail(req,res,next,{
                 error: "Failed to get data! Reason: no application config identifier!",
@@ -125,7 +125,7 @@ module.exports= function(app){
             return;
         }
         if(reqAIDCN!=aidcn){
-            var msgPostfix= (!sysadminName)?"Обратитесь к системному администратору.":"Попытка доступа к приложению с идентификатором \""+aidcn+"\".";
+            var msgPostfix= (!sysadminLogin)?"Обратитесь к системному администратору.":"Попытка доступа к приложению с идентификатором \""+aidcn+"\".";
             accessFail(req,res,next,{
                 error: "Failed to get data! Reason: application config identifier non correct!",
                 userErrorMsg: "Не удалось получить данные! <br>Неверный идентификатор приложения. <br>"+msgPostfix,
@@ -142,41 +142,40 @@ module.exports= function(app){
             return;
         }
         var userConnectionData= appDatabase.getUserConnectionData(uuid);
-        if(sysadminName) req.dbSysadminName= sysadminName;
-        if(sysadminName&&(req.originalUrl=="/sysadmin"||req.originalUrl.indexOf("/sysadmin/")==0)){
+        if(sysadminLogin) req.dbSysadminName= sysadminLogin;
+        if(sysadminLogin&&(req.originalUrl=="/sysadmin"||req.originalUrl.indexOf("/sysadmin/")==0)){
             req.dbUC= (userConnectionData)?userConnectionData.connection:null;
-            sysadmin.getDBUserData(req.dbUC, function(errMsg,dbUserParameters){
-                req.dbUserParams=dbUserParameters;
+            sysadmin.getAppUserData(req.dbUC,sysadminLogin, function(errMsg,appUserDataParams){
+                req.appUserDataParams= appUserDataParams;
                 if(errMsg){
-                    req.dbUserName=sysadminName;req.dbEmpRole="sysadmin";req.dbUserError=errMsg;
+                    req.appUserName= sysadminLogin; req.appUserRole="sysadmin"; req.appUserError=errMsg;
                 }else{
-                    req.dbUserName=dbUserParameters.dbUserName;req.dbEmpRole=dbUserParameters["EmpRole"];
-                }                                                                                               //log.info('ACCESS CONTROLLER: dbUserName:',req.dbUserName,'dbUserParams:',req.dbUserParams);
+                    req.appUserName= appUserDataParams["appUserName"]; req.appUserRole= appUserDataParams["appUserRole"];
+                }                                                                                               //log.info('ACCESS CONTROLLER: appUserName:',req.appUserName,'appUserDataParams:',req.appUserDataParams);
                 next();
             });
             return;
         }
-        //if(appDatabase.getSystemConnectionErr()){
-        //    var msg="Нет системного подключения к базе данных! <br>Обратитесь к системному администратору.";
-        //    if(isReqJSON(req.method,req.headers)){
-        //        res.send({error:{error:"Failed to get data! Reason: failed get system connection to database!",userMessage:msg}});
-        //        return;
-        //    }
-        //    if(sysadminName&&req.originalUrl!=="/sysadmin"){ res.redirect('/sysadmin');return; }
-        //    if(renderIsMobile(req,res,next))return;
-        //    renderToAccessFailed(req,res,msg);
-        //    return;
-        //}
-        if(!userConnectionData||!userConnectionData.connection){
-        //    accessFail(req,res,next,{
-        //        error: "Failed to get data! Reason: user is not authorized!",
-        //        userErrorMsg: "Не удалось получить данные. <br>Время авторизированного доступа истекло. <br>Нужно авторизироваться повторно.",
-        //        pageMsg: "<div>Время сессии истекло. <br>Необходима авторизация.</div>"
-        //    });
-        //    return;
-            userConnectionData= userConnectionData||{};
+        if(appDatabase.getSystemConnectionErr()){
+            var msg="Нет системного подключения к базе данных! <br>Обратитесь к системному администратору.";
+            if(isReqJSON(req.method,req.headers)){
+                res.send({error:{error:"Failed to get data! Reason: failed get system connection to database!",userMessage:msg}});
+                return;
+            }
+            if(sysadminLogin&&req.originalUrl!=="/sysadmin"){ res.redirect('/sysadmin');return; }
+            if(renderIsMobile(req,res,next))return;
+            renderToAccessFailed(req,res,msg);
+            return;
         }
-        if(!sysadminName&&(req.originalUrl=="/sysadmin"||req.originalUrl.indexOf("/sysadmin/")==0)){
+        if(!userConnectionData||!userConnectionData.connection){
+            accessFail(req,res,next,{
+                error: "Failed to get data! Reason: user is not authorized!",
+                userErrorMsg: "Не удалось получить данные. <br>Время авторизированного доступа истекло. <br>Нужно авторизироваться повторно.",
+                pageMsg: "<div>Время сессии истекло. <br>Необходима авторизация.</div>"
+            });
+            return;
+        }
+        if(!sysadminLogin&&(req.originalUrl=="/sysadmin"||req.originalUrl.indexOf("/sysadmin/")==0)){
             var errMsg="Невозможно получить данные! Пользователь не авторизирован как сисадмин!";
             if (isReqJSON(req.method,req.headers)) {
                 res.send({ error:{error:"Failed to get data! Reason: login user is not sysadmin!",userMessage:errMsg} });
@@ -186,7 +185,7 @@ module.exports= function(app){
             return;
         }
         req.dbUC = userConnectionData.connection;
-        sysadmin.getDBUserData(userConnectionData.connection, function(errMsg,dbUserParameters){
+        sysadmin.getAppUserData(userConnectionData.connection,userConnectionData.login, function(errMsg,appUserDataParams){
             if(errMsg){
                 accessFail(req,res,next,{
                     error: "ailed to get data! Reason: failed to get login user data from database!",
@@ -196,9 +195,9 @@ module.exports= function(app){
                 });
                 return;
             }
-            req.dbUserParams= dbUserParameters;
-            req.dbUserName= dbUserParameters["dbUserName"]; req.dbEmpName= dbUserParameters["EmpName"];         log.info(uuid,req.dbUserName,'ACCESS CONTROLLER: dbUserParams=',req.dbUserParams);
-            req.dbEmpRole=(dbUserParameters)?dbUserParameters["EmpRole"]:null;
+            req.appUserDataParams= appUserDataParams;
+            req.appUserName= appUserDataParams["appUserName"]; req.EmpName= appUserDataParams["appUserName"];         log.info(uuid,req.appUserName,'ACCESS CONTROLLER: appUserDataParams=',req.appUserDataParams);
+            req.appUserRole= (appUserDataParams)?appUserDataParams["appUserRole"]:null;
             var validateError=appModules.getValidateError();
             if(validateError){
                 accessFail(req,res,next,{
@@ -228,24 +227,24 @@ module.exports= function(app){
         renderToLogin(res,"");
     });
     /**
-     * sysadminData = { uuid, userName }
+     * sysadminData = { uuid, login }
      */
     var storeSysadminUUID= function(sysadminData, callback){
-        sysadminsList[sysadminData.uuid]= sysadminData.userName;
+        sysadminsList[sysadminData.uuid]= sysadminData.login;
         fs.writeFile(path.join(__dirname,"../sysadmins.json"), JSON.stringify(sysadminsList),{flag:"w"}, function(err){
             if(err){                                                                                            log.error("storeSysadminUUID: Failed store sysadmins data! Reason:",err);
             }
             if(callback)callback();
         });
     };
-    app.post("/login",function(req,res){                                                                        log.info("LOGIN PROCESS",req.body.user,"ACCESS CONTROLLER: post /login user=",req.body.user,'pswrd=',req.body.pswrd);
-        var userName=req.body.user, userPswrd=req.body.pswrd;
-        if(!userName ||!userPswrd){
+    app.post("/login",function(req,res){                                                                        log.info("LOGIN PROCESS",req.body.login,"ACCESS CONTROLLER: post /login login=",req.body.login,'pswrd=',req.body.pswrd);
+        var login=req.body.login, loginPswrd=req.body.pswrd;
+        if(!login ||!loginPswrd){
             res.send({ error:{error:"Authorisation failed! No login or password!",userMessage:"Пожалуйста введите имя и пароль."} });
             return;
         }
         var uuid = systemFuncs.getUIDNumber();
-        appDatabase.createNewUserDBConnection({uuid:uuid,login:userName,password:userPswrd}, function(err,result){
+        appDatabase.createNewUserDBConnection({uuid:uuid,login:login,password:loginPswrd}, function(err,result){
             var isSysadmin=false, sysConfig= getSysConfig(),
                 appMode= (appStartupParams)?appStartupParams.mode:null,
                 appModeIsDebug= !appMode
@@ -258,10 +257,10 @@ module.exports= function(app){
                 appName:appName, appVerSrv:appVer, appCVer:appCVer,
                 mode:appMode, modeIsDebug:appModeIsDebug, dbName:sysConfig.dbName
             };
-            if(sysConfig && userName==sysConfig.dbUser && userPswrd==sysConfig.dbUserPass) isSysadmin=true;
+            if(sysConfig && login==sysConfig.dbUser && loginPswrd==sysConfig.dbUserPass) isSysadmin=true;
             if(err){
                 if(isSysadmin){
-                    storeSysadminUUID({uuid:uuid,userName:userName},function(){
+                    storeSysadminUUID({uuid:uuid,login:login},function(){
                         if(!getIsMobileApp(req)){
                             res.cookie("uuid",uuid);
                             var aidcn= getAIDCN();
@@ -275,17 +274,17 @@ module.exports= function(app){
                 res.send(outData);
                 return;
             }
-            if(isSysadmin) storeSysadminUUID({uuid:uuid,userName:userName});
+            if(isSysadmin) storeSysadminUUID({uuid:uuid,login:login});
             if(!getIsMobileApp(req)){
                 res.cookie("uuid",uuid);
                 var aidcn= getAIDCN();
                 if(aidcn) res.cookie("aidcn",aidcn);
             }
-            sysadmin.getDBUserData(result.dbUC, function(errMsg,dbUserParameters){
-                if(errMsg) outData.dbUserError= errMsg;
-                if(dbUserParameters){
-                    outData.dbUserName= dbUserParameters["dbUserName"];
-                    outData.dbEmpName= dbUserParameters["EmpName"]; outData.dbEmpRole= dbUserParameters["EmpRole"];
+            sysadmin.getAppUserData(result.dbUC,login, function(errMsg,appUserDataParams){
+                if(errMsg) outData.appUserError= errMsg;
+                if(appUserDataParams){
+                    outData.appUserName= appUserDataParams["appUserName"];
+                    outData.EmpName= appUserDataParams["appUserName"]; outData.appUserRole= appUserDataParams["appUserRole"];
                 }
                 res.send(outData);
             });

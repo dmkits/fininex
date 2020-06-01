@@ -195,6 +195,7 @@ var getConUUID= appDatabase.getConUUID, getConU= appDatabase.getConU;
  *              "<function>" OR
  *              { function:<function>, source:<functionSource>, sourceField:<functionSourceField>, fields:[ <functionBodySourceFieldName> ] },
  *      ... },
+ *      fieldsToString = [ <fieldName> ],
  *      fieldsResultFunctions = { <fieldName>:"<function>" },
  *      joinedSources = { <sourceName>:<linkConditions> = <linkConditions> or { <linkCondition>:null or <linkCondition>:<value>, ... } },
  *      leftJoinedSources = { <sourceName>:<linkConditions> = <linkConditions> or { <linkCondition>:null or <linkCondition>:<value>, ... } },
@@ -220,6 +221,13 @@ function _getSelectItems(dbCon, params,resultCallback){                         
         return;
     }
     var queryFields="", queryResultFields="";
+    if(params.fieldsToString){
+        params.fieldsFunctions= params.fieldsFunctions||{};
+        for(var fieldName of params.fieldsToString){
+            params.fieldsFunctions[fieldName]="convert("+((params.fieldsSources)?params.fieldsSources[fieldName]:fieldName)+",CHAR)";
+            if(params.fieldsSources[fieldName]) params.fieldsSources[fieldName]=null;
+        }
+    }
     for(var fieldNameIndex in params.fields){
         if(queryFields!="") queryFields+= ",";
         var fieldName=params.fields[fieldNameIndex], fieldFunction=null;
@@ -259,7 +267,7 @@ function _getSelectItems(dbCon, params,resultCallback){                         
             if(sourceParamName&&sourceParamValue===null){
                 querySource=querySource.replace(new RegExp(sourceParamName,'g'), "NULL");
             }else if(sourceParamName){
-                querySource=querySource.replace(new RegExp(sourceParamName,'g'), '@p'+queryValues.length);
+                querySource=querySource.replace(new RegExp(sourceParamName,'g'), '?');
                 queryValues.push(sourceParamValue);
             }
         }
@@ -297,7 +305,7 @@ function _getSelectItems(dbCon, params,resultCallback){                         
         for(var conditionItem in params.conditions){
             var conditionItemValue=params.conditions[conditionItem];
             //var conditionItemValueQuery= (conditionItemValue===null)?conditionItem:conditionItem+"?";
-            var conditionItemValueQuery= (conditionItemValue===null||conditionItemValue==='null')?conditionItem:conditionItem+"@p"+queryValues.length;
+            var conditionItemValueQuery= (conditionItemValue===null||conditionItemValue==='null')?conditionItem:conditionItem+"?";
             conditionItemValueQuery= conditionItemValueQuery.replace("~","=");
             if(conditionItem.indexOf("SUM(")>=0)
                 hConditionQuery= (!hConditionQuery)?conditionItemValueQuery:hConditionQuery+" and "+conditionItemValueQuery;
@@ -312,7 +320,7 @@ function _getSelectItems(dbCon, params,resultCallback){                         
                 conditionFieldName= params.fieldsSources[conditionFieldName];
             var conditionItemValueQuery=
                 //(conditionItem.value===null)?conditionFieldName+conditionItem.condition:conditionFieldName+conditionItem.condition+"?";
-                (conditionItem.value===null)?conditionFieldName+conditionItem.condition:conditionFieldName+conditionItem.condition+"@p"+queryValues.length;
+                (conditionItem.value===null)?conditionFieldName+conditionItem.condition:conditionFieldName+conditionItem.condition+"?";
             wConditionQuery= (!wConditionQuery)?conditionItemValueQuery:wConditionQuery+" and "+conditionItemValueQuery;
             if(conditionItem.value!==null) queryValues.push(conditionItem.value);
         }
@@ -362,6 +370,7 @@ module.exports.getSelectItems= _getSelectItems;
  *              "<function>" OR
  *              { function:<function>, source:<functionSource>, sourceField:<functionSourceField>, fields:[ <functionBodySourceFieldName> ] },
  *      ... },
+ *      fieldsToString = [ <fieldName> ],
  *      fieldsResultFunctions = { <fieldName>:"<function>" },
  *      conditions={ <condition>:<conditionValue>, ... } or withoutConditions=true/false, default withoutConditions=false,
  *      ignoreUndefConditions=true/false, default ignoreUndefConditions=false,
@@ -413,6 +422,7 @@ function _getDataItems(dbCon, params, resultCallback){                          
  *              "<function>" OR
  *              { function:<function>, source:<functionSource>, sourceField:<functionSourceField>, fields:[ <functionBodySourceFieldName> ] },
  *      ... },
+ *      fieldsToString = [ <fieldName> ],
  *      fieldsResultFunctions = { <fieldName>:"<function>" },
  *      conditions={ <condition>:<conditionValue>, ... },
  * }
@@ -660,16 +670,21 @@ function _getDataItemsForTable(dbCon, params, resultCallback){
     }
     var fieldsList=[], fieldsSources={}, fieldsFunctions, groupedFieldsList=[], addJoinedSources, fieldsResultFunctions;
     for(var i in params.tableColumns){
-        var tableColumnData= params.tableColumns[i], fieldName= tableColumnData.data;
+        var tableColumnData= params.tableColumns[i], fieldName= tableColumnData.data, fieldSourceName= fieldName;
+        if(!tableColumnData.dataFunction&&params.tableData&&params.tableData.identifier&&params.tableData.identifier==fieldName){
+            params.fieldsToString= params.fieldsToString||[];
+            params.fieldsToString.push(fieldName);
+        }
         if(this.fieldsMetadata&&this.fieldsMetadata[fieldName]&&!tableColumnData.dataFunction){
             if(tableColumnData.name) fieldsList.push(fieldName);
             if(tableColumnData.name&&hasAFunctions) groupedFieldsList.push(fieldName);
             if(tableColumnData.dataSource&&tableColumnData.sourceField)
-                fieldsSources[fieldName]= _getDSAlias(tableColumnData.dataSource)+"."+tableColumnData.sourceField;
+                fieldSourceName= _getDSAlias(tableColumnData.dataSource)+"."+tableColumnData.sourceField;
             else if(tableColumnData.dataSource)
-                fieldsSources[fieldName]= _getDSAlias(tableColumnData.dataSource)+"."+fieldName;
+                fieldSourceName= _getDSAlias(tableColumnData.dataSource)+"."+fieldName;
             else if(hasSources&&params.sourceName)
-                fieldsSources[fieldName]= params.sourceName+"."+fieldName;
+                fieldSourceName= params.sourceName+"."+fieldName;
+            fieldsSources[fieldName]= fieldSourceName;
         }else if(!tableColumnData.dataFunction &&( tableColumnData.sourceField||tableColumnData.dataSource||tableColumnData.childDataSource)){
             if(tableColumnData.name) fieldsList.push(fieldName);
             if(tableColumnData.name&&hasAFunctions) groupedFieldsList.push(fieldName);
@@ -677,10 +692,8 @@ function _getDataItemsForTable(dbCon, params, resultCallback){
             if(hasSources) fieldDS= params.sourceName+".";
             if(tableColumnData.dataSource) fieldDS= _getDSAlias(tableColumnData.dataSource)+".";
             if(tableColumnData.childDataSource) fieldDS= tableColumnData.childDataSource+".";
-            if(tableColumnData.sourceField)
-                fieldsSources[fieldName]= fieldDS+tableColumnData.sourceField;
-            else
-                fieldsSources[fieldName]= fieldDS+fieldName;
+            if(tableColumnData.sourceField) fieldSourceName= fieldDS+tableColumnData.sourceField; else fieldSourceName= fieldDS+fieldName;
+            fieldsSources[fieldName]= fieldSourceName;
         }else if(tableColumnData.dataFunction){
             if(tableColumnData.name) fieldsList.push(fieldName);
             if(hasAFunctions&&tableColumnData.name&&!tableColumnData.dataFunction
@@ -972,7 +985,7 @@ function _insDataItem(dbCon, params, resultCallback){
         if(queryFields!="") queryFields+= ",";
         if(queryFieldsValues!="") queryFieldsValues+= ",";
         queryFields+= fieldName;
-        queryFieldsValues+= "@p"+queryInputParams.length;
+        queryFieldsValues+= "?";
         var insDataItemValue=params.insData[fieldName];
         if(insDataItemValue&&(insDataItemValue instanceof Date)){
             insDataItemValue= dateFormat(insDataItemValue,"yyyy-mm-dd HH:MM:ss");
@@ -1064,7 +1077,7 @@ function _updDataItem(dbCon, params, resultCallback){
     var queryFields="", fieldsValues=[];
     for(var fieldName in params.updData){
         if(queryFields!="") queryFields+= ",";
-        queryFields+= fieldName+"=@p"+fieldsValues.length;
+        queryFields+= fieldName+"=?";
         var updDataItemValue= params.updData[fieldName];
         if(updDataItemValue&&(updDataItemValue instanceof Date)){
             updDataItemValue= dateFormat(updDataItemValue,"yyyy-mm-dd HH:MM:ss");
@@ -1074,7 +1087,7 @@ function _updDataItem(dbCon, params, resultCallback){
     var updQuery= "update "+params.tableName+" set "+queryFields, queryConditions="";
     for(var fieldNameCondition in params.conditions){
         if(queryConditions!="") queryConditions+= " and ";
-        queryConditions+= fieldNameCondition.replace("~","=")+"@p"+fieldsValues.length;
+        queryConditions+= fieldNameCondition.replace("~","=")+"?";
         fieldsValues.push(params.conditions[fieldNameCondition]);
     }
     updQuery+= " where "+queryConditions;
@@ -1152,7 +1165,7 @@ function _delDataItem(dbCon, params, resultCallback){
     for(var fieldNameCondition in params.conditions){
         if(queryConditions!="") queryConditions+= " and ";
        // queryConditions+= fieldNameCondition.replace("~","=")+"?";
-        queryConditions+= fieldNameCondition.replace("~","=")+"@p"+fieldsValues.length;
+        queryConditions+= fieldNameCondition.replace("~","=")+"?";
         fieldsValues.push(params.conditions[fieldNameCondition]);
     }
     delQuery+= " where "+queryConditions;
@@ -1194,7 +1207,6 @@ function _checkDataItemVal(dataItems,dataItemName,checkType,sErr,sUErr, callback
         if(val!=null) dataItems[dataItemName]= val-0;
     }
     return true;
-
 }
 /**
  * params = { tableName, resultFields, findByFields, idFieldName,
@@ -1300,14 +1312,20 @@ function _insTableDataItem(dbCon, params, resultCallback){
         var resultFields=[];
         for(var fieldName in params.insTableData) resultFields.push(fieldName);
         var getResultConditions={};
-        if(idFieldName)
+        if(idFieldName){
             getResultConditions[params.tableName+"."+idFieldName+"="]= params.insTableData[idFieldName];
-        else
+            params.fieldsToString= params.fieldsToString||[];
+            params.fieldsToString.push(idFieldName);
+        }else{
+            params.fieldsToString= params.fieldsToString||[];
             for(var i in idFields){
                 var idFieldNameItem=idFields[i];
                 getResultConditions[params.tableName+"."+idFieldNameItem+"="]=params.insTableData[idFieldNameItem];
+                params.fieldsToString.push(idFieldNameItem);
             }
-        thisInstance.getDataItemForTable(dbCon, {source:params.tableName, tableColumns:params.tableColumns, conditions:getResultConditions},
+        }
+        thisInstance.getDataItemForTable(dbCon, {source:params.tableName, tableColumns:params.tableColumns,
+                fieldsToString:params.fieldsToString, conditions:getResultConditions},
             function(result){
                 if(result.error) insResult.error= "Failed get result inserted data item! Reason:"+result.error;
                 if(result.item) insResult.resultItem= result.item;
@@ -1383,7 +1401,15 @@ function _updTableDataItem(dbCon, params, resultCallback){
     var thisInstance=this;
     _updDataItem(dbCon, params, function(updResult){
         if(updResult.error){ resultCallback(updResult); return; }
-        thisInstance.getDataItemForTable(dbCon, {source:params.tableName, tableColumns:params.tableColumns, conditions:params.resultItemConditions||params.conditions},
+        if(idFieldName&&(params.updTableData||params.updTableFieldsData)){
+            params.fieldsToString= params.fieldsToString||[];
+            params.fieldsToString.push(idFieldName);
+        }else{
+            params.fieldsToString= params.fieldsToString||[];
+            for(var idFieldNameItem of idFields) params.fieldsToString.push(idFieldNameItem);
+        }
+        thisInstance.getDataItemForTable(dbCon, {source:params.tableName, tableColumns:params.tableColumns,
+                fieldsToString:params.fieldsToString, conditions:params.resultItemConditions||params.conditions},
             function(result){
                 if(result.error) updResult.error= "Failed get result updated data item! Reason:"+result.error;
                 if(result.item) updResult.resultItem= result.item;

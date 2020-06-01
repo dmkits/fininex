@@ -4,7 +4,7 @@
   "imageSmall":"/imgs/logo-pageTitle-GS-red-small-129x54.jpg",
   "imageMain":"/imgs/logo-pageTitle-GS-red-small-129x54.jpg",
   "modules":[
-    "sysadmin",
+    "sysadminMySQL",
     "print",
     "system",
     "main",
@@ -19,7 +19,7 @@
     { "menuItemName":"menuBarItemClose", "menuTitle":"Выход", "action":"close" }
   ],
   "usersRoles":{
-    "admin":{
+    "sysadmin":{
       "menu":["menuBarItemDocFin","menuBarItemHelpAbout","menuBarItemClose"],
       "autorun":["menuBarItemDocFin"]
     },

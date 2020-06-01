@@ -1,11 +1,13 @@
-var mysql= require('mysql');
+var mysql= require('mysql'), child_process= require('child_process');
 var server= require('./server'), log= server.log;
 
 /**
- * connections= { uuid: {user:<user>, connection: <connection> } }
+ * connections= { uuid:{ login:<login>, connection: <connection> } }
  */
 var connections={};
-
+/**
+ * return connection = { login:<login>, connection: <connection> }
+ */
 module.exports.getUserConnectionData= function(uuid){
     return connections[uuid];
 };
@@ -30,36 +32,42 @@ function createNewUserDBConnection(userData, callback){
             errorMessage:"Не удалось подключиться к базе данных!<br> Нет параметров подключения к базе данных!<br> Обратитесь к системному администратору."});
         return;
     }
-    //var dbUserConnection = new mysql.ConnectionPool({
-    //    userUUID:uuid,
-    //    user: userData.login,
-    //    password: userData.password,
-    //    server:   dbConfig.dbHost,
-    //    database: dbConfig.dbName,
-    //    pool: {
-    //        max: 100,
-    //        min: 0/*,
-    //        idleTimeoutMillis: 30000*/
-    //    }
-    //},function(err){
-    //    var connectionData=connections[uuid];
-    //    if(err){                                                                                                log.error(uuid,userData.login,"database createNewUserDBConnection: Failed to create connection for user "+userData.login+" userData.uuid="+userData.uuid+ ". Reason: "+err);
-    //        if(connectionData){
-    //            connectionData.connection=null;
-    //            connectionData.user=userData.login;
-    //        }
-    //        callback({error:err.message,errorMessage:err.message});
-    //        return;
-    //    }
-    //    if(!connectionData)
-    //        connections[uuid]={ connection:dbUserConnection, user:userData.login };
-    //    else{
-    //        connectionData.connection=dbUserConnection;
-    //        connectionData.user=userData.login;
-    //    }
-    //    callback(null,{dbUC:dbUserConnection});
-    //});
-    callback({error:"No database!"});
+    var connectionData= connections[uuid];
+    var con = mysql.createConnection({
+        host: dbConfig.dbHost,
+        port: dbConfig.dbPort,
+        user: userData.login,
+        password: userData.password,
+        database: dbConfig.dbName
+    });
+    if(!con){
+        if(connectionData){ connectionData.connection=null; connectionData.user=userData.login; }
+        callback({error:"FAILED create database connection!"});
+        return;
+    }
+    con.connect(function(err) {
+        if(err){
+            if(connectionData){ connectionData.connection=null; connectionData.user=userData.login; }
+            callback({error:"FAILED database connection connect! Reason: "+err.message});
+            return;
+        }
+        con.query('SELECT 1', function (error, results, fields) {
+            if(error) throw error;
+            if(error){
+                if(connectionData){ connectionData.connection=null; connectionData.user=userData.login; }
+                callback({error:"FAILED database connection started! Reason: "+error.message});
+                return;
+            }
+            con.userUUID= uuid;
+            if(!connectionData)
+                connections[uuid]={ connection:con, login:userData.login };
+            else{
+                connectionData.connection= con;
+                connectionData.login= userData.login;
+            }
+            callback(null,{dbUC:con});// connected! console.log('connected as id ' + con.threadId);
+        });
+    });
 }
 module.exports.createNewUserDBConnection= createNewUserDBConnection;
 
@@ -109,20 +117,6 @@ module.exports.setDBSystemConnection= setDBSystemConnection;
 function getSystemConnectionErr(){ return systemConnectionErr; }
 module.exports.getSystemConnectionErr= getSystemConnectionErr;
 
-function getFieldsTypes(recordset){
-    var columns=recordset.columns, fieldsTypes={};
-    for(var colName in columns){
-        var column=columns[colName];
-        if(column.type===mysql.DateTime) fieldsTypes[colName]="datetime";
-        else if(column.type===mysql.SmallDateTime) fieldsTypes[colName]="datetime";
-        else if(column.type===mysql.VarChar) fieldsTypes[colName]="varchar";
-        else if(column.type===mysql.Bit) fieldsTypes[colName]="bit";
-        else if(column.type===mysql.Int) fieldsTypes[colName]="integer";
-        else if(column.type===mysql.Numeric) fieldsTypes[colName]="numeric";
-        else fieldsTypes[colName]="unknown";
-    }
-    return fieldsTypes;
-}
 /**
  * for MS SQL database select query
  * query= <MS SQL select query string>
@@ -133,12 +127,11 @@ function selectQuery(connection,query, callback){                               
         if(callback)callback({message:"No user database connection is specified."});
         return;
     }
-    var request = new mysql.Request(connection);
-    request.query(query,function(err,result){
+    connection.query(query,function(err,recordset,fields){
         if(err){                                                                                                log.error(getConUUID(connection),getConU(connection),'database: selectQuery error:',err.message, {});
             callback(err); return;
         }
-        callback(null, result.recordset, result.rowsAffected.length, getFieldsTypes(result.recordset));
+        callback(null, recordset, recordset.affectedRows, fields);
     });
 }
 module.exports.selectQuery= selectQuery;
@@ -152,12 +145,11 @@ module.exports.executeQuery= function(connection,query,callback){               
         callback({message:"No user database connection is specified."});
         return;
     }
-    var request = new mysql.Request(connection);
-    request.query(query,function(err,result){
+    connection.query(query,function(err,execResult){
         if(err){                                                                                                log.error(getConUUID(connection),getConU(connection),'database: executeQuery error:',err.message,{});
             callback(err); return;
-        }
-        callback(null, result.rowsAffected[result.rowsAffected.length-1]);
+        }                                                                                                       log.debug(getConUUID(connection),getConU(connection),'database: executeQuery result:',execResult,execResult.affectedRows,{});//test
+        callback(null, execResult.affectedRows);
     });
 };
 /**
@@ -170,13 +162,11 @@ function selectParamsQuery(connection,query, parameters, callback) {            
         callback({message:"No user database connection is specified."});
         return;
     }
-    var request = new mysql.Request(connection);
-    for(var i in parameters)request.input('p'+i,parameters[i]);
-    request.query(query,function(err,result){
+    connection.query(query,parameters,function(err,recordset,fields){
         if(err){                                                                                                log.error(getConUUID(connection),getConU(connection),'database: selectParamsQuery error:',err.message,{});
             callback(err); return;
         }
-        callback(null, result.recordset, result.rowsAffected.length, getFieldsTypes(result.recordset));
+        callback(null, recordset, recordset.affectedRows, fields);
     });
 }
 module.exports.selectParamsQuery= selectParamsQuery;
@@ -191,9 +181,7 @@ module.exports.executeParamsQuery= function(connection, query, parameters, callb
         callback({message:"No user database connection is specified."});
         return;
     }
-    var request = new mysql.Request(connection);
-    for(var i in parameters)request.input('p'+i,parameters[i]);
-    request.query(query,function(err,result){
+    connection.query(query,parameters,function(err,execResult){
         if(err){                                                                                                //log.error(getConUUID(connection),getConU(connection),'database: executeParamsQuery error:',err.message,err.precedingErrors,{});//test
             var precedingErrors= err.precedingErrors, sMsg=null, sErr="";
             for(var prErrNum in precedingErrors){
@@ -205,7 +193,129 @@ module.exports.executeParamsQuery= function(connection, query, parameters, callb
             var qErr= {message:sMsg||err.message, error:sErr||err.message};                                     log.error(getConUUID(connection),getConU(connection),'database: executeParamsQuery error:',qErr,{});//test
             callback(qErr);
             return;
-        }                                                                                                       log.debug(getConUUID(connection),getConU(connection),'database: executeParamsQuery result:',result,result.rowsAffected[result.rowsAffected.length-1],{});//test
-        callback(null, result.rowsAffected[result.rowsAffected.length-1]);
+        }                                                                                                       log.debug(getConUUID(connection),getConU(connection),'database: executeParamsQuery result:',execResult,execResult.affectedRows,{});//test
+        callback(null, execResult.affectedRows);
+    });
+};
+/**
+ * params = { dbHost, dpPort, dbUser, dbUserPswrd }
+ */
+module.exports.getDatabasesForUser= function(connection,params,callback) {
+    var dbListForUserConfig= {
+        host: params.dbHost,
+        port: params.dbPort,
+        user: params.dbUser,
+        password:params.dbUserPswrd
+    };
+    var dbListForUserConn= mysql.createConnection(dbListForUserConfig);
+    dbListForUserConn.connect(function(err){
+        if(err){                                                                                                log.error(getConUUID(connection),getConU(connection),"database.getDatabasesForUser connect error:",err.message);
+            callback(err.message);
+            return;
+        }
+        dbListForUserConn.query("SHOW DATABASES", function(err,dbList){
+            if(err){ callback(err); return; }
+            callback(null,dbList,params.dbUser);
+            dbListForUserConn.destroy();
+        });
+    });
+};
+
+module.exports.createNewDB= function(connection, DBName,callback) {
+    connection.query('CREATE SCHEMA '+DBName,
+        function(err){
+            if(err){ callback(err); return; }
+            callback(null, DBName+" Database created!");
+        });
+};
+
+module.exports.checkIfUserExists= function(connection, newUserName,callback) {
+    connection.query("select * from mysql.user where user='"+newUserName+"'",
+        function(err,recordset){
+            if(err){ callback(err); return; }
+            callback(null,recordset);
+        });
+};
+
+module.exports.createNewUser= function(connection,newUserName,host,newUserPassword,callback) {
+    connection.query("CREATE USER '"+newUserName+"'@'"+host+"' IDENTIFIED BY '"+newUserPassword+"'",
+        function(err){
+            if(err){ callback(err); return; }
+            callback(null,"User "+ newUserName+" created!");
+        });
+};
+
+module.exports.grantUserAccess= function(connection,userName,host,newDBName,callback) {
+    connection.query("GRANT ALL PRIVILEGES ON "+newDBName+".* TO '"+userName+"'@'"+host+"' WITH GRANT OPTION",
+        function(err){
+            if(err){ callback(err); return; }
+            callback(null,userName+" granted privileges!");
+        });
+};
+
+module.exports.dropDB= function(connection,DBName,callback) {
+    connection.query("DROP DATABASE "+DBName,
+        function(err){
+            if(err){ callback(err); return; }
+            callback(null,DBName+" dropped!");
+        });
+};
+
+module.exports.isDBEmpty= function(connection,DBName,callback) {
+    connection.query("SELECT table_name FROM information_schema.tables where table_schema='"+DBName+"'",
+        function(err,recordset){
+            if(err){ callback(err); return; }
+            callback(null,recordset[0]);
+        });
+};
+
+/**
+ * backupParam = {host, database, fileName, user, password,  onlyData:true/false}
+ * default onlyData=false
+ */
+module.exports.backupDB= function(backupParam,callback) {
+    var onlyDataCommand=
+        (backupParam.onlyData==='true') ? " --no-create-info   --ignore-table="+backupParam.database+".change_log" : " ";
+    var backupDir=__dirname+'/../backups/';
+    if(!fs.existsSync(backupDir)){ fs.mkdirSync(backupDir); }
+    var filePath=path.join(backupDir+backupParam.fileName);
+    var command ='mysqldump'+onlyDataCommand + ' -u '+ backupParam.user + ' --password="'+backupParam.password+
+        '" --host='+backupParam.host +' '+backupParam.database+' --result-file='+filePath;                      log.debug("database.backupDB command=",command);
+    child_process.exec(command, function(err,stdout,stderr){
+        if(err){                                                                                                log.error("err backupDB=", err);
+            callback(err);
+            return;
+        }
+        if(stdout){
+            log.info("stdout backupDB=",stdout);
+        }
+        if(stderr && stderr.indexOf("Warning")<0){                                                              log.error("stderr backupDB=",stderr);
+            callback(stderr);
+            return;
+        }
+        callback(null,"Database "+backupParam.database+" backup saved to "+backupParam.fileName);
+    });
+};
+/**
+ * restoreParams = {host, database, fileName, user, password}
+ * default onlyData=false
+ */
+module.exports.restoreDB= function(restoreParams,callback) {
+    var filePath=path.join(__dirname+'/../backups/'+restoreParams.fileName);
+    var command ='mysql -u '+restoreParams.user+' --password="'+restoreParams.password+
+        '" -h '+restoreParams.host+' '+restoreParams.database+' < '+ filePath;                                  log.debug("database.restoreDB command=",command);
+    child_process.exec(command, function(err,stdout,stderr){
+        if(err){                                                                                                log.error("database.restoreDB error=", err);
+            callback(err);
+            return;
+        }
+        if(stdout){
+            log.info("stdout restoreDB=",stdout);
+        }
+        if(stderr && stderr.indexOf("Warning")<0){                                                              log.error("database.restoreDB stderr=",stderr);
+            callback(stderr);
+            return;
+        }
+        callback(null,"Database "+restoreParams.database+" restored successfully!");
     });
 };

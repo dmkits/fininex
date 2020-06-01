@@ -238,18 +238,16 @@ module.exports= function(app){
         });
     };
     app.post("/login",function(req,res){                                                                        log.info("LOGIN PROCESS",req.body.login,"ACCESS CONTROLLER: post /login login=",req.body.login,'pswrd=',req.body.pswrd);
-        var login=req.body.login, loginPswrd=req.body.pswrd;
+        var login= req.body.login, loginPswrd= req.body.pswrd;
         if(!login ||!loginPswrd){
             res.send({ error:{error:"Authorisation failed! No login or password!",userMessage:"Пожалуйста введите имя и пароль."} });
             return;
         }
-        var uuid = systemFuncs.getUIDNumber();
+        var uuid= systemFuncs.getUIDNumber();
         appDatabase.createNewUserDBConnection({uuid:uuid,login:login,password:loginPswrd}, function(err,result){
             var isSysadmin=false, sysConfig= getSysConfig(),
                 appMode= (appStartupParams)?appStartupParams.mode:null,
-                appModeIsDebug= !appMode
-                    ||(appMode.toLocaleLowerCase().indexOf("debug")>=0)
-                    ||(appMode.toLocaleLowerCase().indexOf("test")>=0),
+                appModeIsDebug= !appMode||(appMode.toLocaleLowerCase().indexOf("debug")>=0)||(appMode.toLocaleLowerCase().indexOf("test")>=0),
                 appConfig= (getAppConfig)?getAppConfig():null,
                 appName= (appConfig)?(appConfig.title||appConfig.appID):"UNKNOWN",
                 appVer= (appConfig)?appConfig.appVer:null, appCVer= (appConfig)?appConfig.appCVer:null;

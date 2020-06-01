@@ -11,7 +11,7 @@
 </head>
 <body class="claro">
 <page id="sysadmin_page" design="headline">
-    <BorderContainer id="sysadmin_TopContainer" region="top" design="sidebar" liveSplitters="false" class="sysadmin_TopContent" gutters="true" style="height:63px; margin:0; padding:0">
+    <BorderContainer id="sysadmin_TopContainer" region="top" design="sidebar" liveSplitters="false" gutters="true" class="sysadmin_TopContent" style="height:63px; margin:0; padding:0">
         <ContentPane id="sysadmin_TopImg" region="left" splitter="false" class="sysadmin_TopContent"></ContentPane>
         <ContentPane region="top" splitter="false" class="sysadmin_TopContent" style="margin:0;margin-left:-6px;height:28px;padding:0;">
             <div class="sysadmin_TopContent" style="width:calc(100% - 10px);height:100%;margin:0;padding:0 5px 0 5px;">
@@ -59,15 +59,14 @@
         };
         function setBrending(appConfig){
             if(appConfig.title) document.title=appConfig.title+" SYSADMIN";
-            if(appConfig.icon32x32)changeFavicon(appConfig.icon32x32);
-            if(appConfig.imageSmall)$$.sysadmin_TopImg.set("style","background-image: url(\""+appConfig.imageSmall+"\")");
+            if(appConfig.icon32x32) changeFavicon(appConfig.icon32x32);
+            if(appConfig.imageSmall) $$.sysadmin_TopImg.set("style","background-image: url(\""+appConfig.imageSmall+"\")");
         }
         function changeFavicon(src) {
-            document.head = document.head || document.getElementsByTagName('head')[0];
-            var link = document.createElement('link'),
-                    oldLink = document.getElementById('dynamic-favicon');
-            link.id = 'dynamic-favicon';link.rel = 'shortcut icon';link.href = src;
-            if(oldLink)document.head.removeChild(oldLink);
+            document.head= document.head||document.getElementsByTagName('head')[0];
+            var link= document.createElement('link'), oldLink= document.getElementById('dynamic-favicon');
+            link.id= 'dynamic-favicon'; link.rel= 'shortcut icon'; link.href= src;
+            if(oldLink) document.head.removeChild(oldLink);
             document.head.appendChild(link);
         }
         /**
@@ -78,12 +77,12 @@
             $$.request.getJSONData({url:"/sysadmin/sysState",conditions:conds,consoleLog:true},function(result,error){
                 $$.sysadmin_getStateFail.innerHTML="";
                 if(error){
-                    $$.sysadmin_page.mainContentData = {error:error};
-                    $$.sysadmin_getStateFail.innerHTML='<b>FAILED: </b><span style="color:red">'+error.message+'</span>';
+                    $$.sysadmin_page.mainContentData= {error:error};
+                    $$.sysadmin_getStateFail.innerHTML= '<b>FAILED: </b><span style="color:red">'+error.message+'</span>';
                 }
                 if(result){
-                    $$.sysadmin_page.mainContentData = result;
-                    $$.sysadmin_appMode.innerHTML = "<b>MODE: </b>";
+                    $$.sysadmin_page.mainContentData= result;
+                    $$.sysadmin_appMode.innerHTML= "<b>MODE: </b>";
                     if(result.mode){
                         var sMode=result.mode.toString().toLocaleLowerCase();
                         if(sMode.indexOf("test")>=0||sMode.indexOf("debug")>=0)
@@ -92,36 +91,36 @@
                             $$.sysadmin_appMode.innerHTML+= "<b style='color:dimgrey'>"+result.mode+"</b>";
                         $$.sysadmin_appMode.setAttribute("title",result.mode);
                     }else {
-                        $$.sysadmin_appMode.innerHTML += "<b>UNKNOWN!!!</b>";
+                        $$.sysadmin_appMode.innerHTML+= "<b>UNKNOWN!!!</b>";
                         $$.sysadmin_appMode.setAttribute("title","UNKNOWN!");
                     }
-                    $$.sysadmin_appPort.innerHTML="<b>APP PORT: </b><b style='color:dimgrey'>"+result.port+"</b>";
+                    $$.sysadmin_appPort.innerHTML= "<b>APP PORT: </b><b style='color:dimgrey'>"+result.port+"</b>";
                     $$.sysadmin_appPort.setAttribute("title",result.port);
                     if(result.appUserError){
-                        $$.sysadmin_appUser.innerHTML="<b>APP USER: <span style='color:dimgrey'>("+result.appUserName+") </span>"+
+                        $$.sysadmin_appUser.innerHTML= "<b>APP USER: <span style='color:dimgrey'>("+result.appUserName+") </span>"+
                                 "<span style='color:red'>"+result.appUserError+"</span></b>";
                         $$.sysadmin_appUser.setAttribute("title","("+result.appUserName+") "+result.appUserError);
                     }else{
-                        $$.sysadmin_appUser.innerHTML="<b>APP USER: <span style='color:dimgrey'>"+result.appUserName+"</span></b>";
+                        $$.sysadmin_appUser.innerHTML= "<b>APP USER: <span style='color:dimgrey'>"+result.appUserName+"</span></b>";
                         $$.sysadmin_appUser.setAttribute("title",result.appUserName);
                     }
                     if(!result.sysConfig)result.sysConfig={};
-                    $$.sysadmin_dbName.innerHTML="<b>DB NAME: <span style='color:dimgrey'>"+result.sysConfig.dbName+"</span></b>";
+                    $$.sysadmin_dbName.innerHTML= "<b>DB NAME: <span style='color:dimgrey'>"+result.sysConfig.dbName+"</span></b>";
                     $$.sysadmin_dbName.setAttribute("title",result.sysConfig.dbName);
                     var dbSysConnState=(result.dbSysConnErr)
                             ?'<span style="color:red">'+result.dbSysConnErr+'</span>'
                             :'<span style="color:dimgrey">Connected</span>';
-                    $$.sysadmin_dbConnectionState.innerHTML ='<b>DB SYSTEM CONNECTION STATE: '+dbSysConnState+'</b>';
+                    $$.sysadmin_dbConnectionState.innerHTML= '<b>DB SYSTEM CONNECTION STATE: '+dbSysConnState+'</b>';
                     $$.sysadmin_dbConnectionState.setAttribute("title",result.dbSysConnErr||"Connected");
                     var dbValidState=(result.dbValidationErr)
                             ?'<span style="color:red">'+result.dbValidationErr+'</span>'
                             :'<span style="color:dimgrey">'+result.dbValidation+'</span>';
-                    $$.sysadmin_dbValidateState.innerHTML ='<b>DB VALIDATION STATE: '+dbValidState+'</b>';
+                    $$.sysadmin_dbValidateState.innerHTML= '<b>DB VALIDATION STATE: '+dbValidState+'</b>';
                     $$.sysadmin_dbValidateState.setAttribute("title",result.dbValidationErr||result.dbValidation);
                     var loadInitModulesState=(result.loadInitModulesErr)
                             ?'<span style="color:red">'+result.loadInitModulesErr+'</span>'
                             :'<span style="color:dimgrey">OK</span>';
-                    $$.sysadmin_loadInitModulesState.innerHTML ='<b>LOAD-INIT APP MODULES STATE: '+loadInitModulesState+'</b>';
+                    $$.sysadmin_loadInitModulesState.innerHTML= '<b>LOAD-INIT APP MODULES STATE: '+loadInitModulesState+'</b>';
                     $$.sysadmin_loadInitModulesState.setAttribute("title",result.loadInitModulesErr||"OK");
                     setBrending(result.appConfig);
                 }

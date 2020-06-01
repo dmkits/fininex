@@ -200,7 +200,7 @@ module.exports.executeParamsQuery= function(connection, query, parameters, callb
 /**
  * params = { dbHost, dpPort, dbUser, dbUserPswrd }
  */
-module.exports.getDatabasesForUser= function(connection,params,callback) {
+module.exports.getDatabasesForUser= function(connection,params,callback){
     var dbListForUserConfig= {
         host: params.dbHost,
         port: params.dbPort,
@@ -213,7 +213,7 @@ module.exports.getDatabasesForUser= function(connection,params,callback) {
             callback(err.message);
             return;
         }
-        dbListForUserConn.query("SHOW DATABASES", function(err,dbList){
+        dbListForUserConn.query("SHOW DATABASES",function(err,dbList){
             if(err){ callback(err); return; }
             callback(null,dbList,params.dbUser);
             dbListForUserConn.destroy();
@@ -221,7 +221,7 @@ module.exports.getDatabasesForUser= function(connection,params,callback) {
     });
 };
 
-module.exports.createNewDB= function(connection, DBName,callback) {
+module.exports.createNewDB= function(connection,DBName,callback){
     connection.query('CREATE SCHEMA '+DBName,
         function(err){
             if(err){ callback(err); return; }
@@ -229,7 +229,7 @@ module.exports.createNewDB= function(connection, DBName,callback) {
         });
 };
 
-module.exports.checkIfUserExists= function(connection, newUserName,callback) {
+module.exports.checkIfUserExists= function(connection,newUserName,callback){
     connection.query("select * from mysql.user where user='"+newUserName+"'",
         function(err,recordset){
             if(err){ callback(err); return; }
@@ -237,7 +237,7 @@ module.exports.checkIfUserExists= function(connection, newUserName,callback) {
         });
 };
 
-module.exports.createNewUser= function(connection,newUserName,host,newUserPassword,callback) {
+module.exports.createNewUser= function(connection,newUserName,host,newUserPassword,callback){
     connection.query("CREATE USER '"+newUserName+"'@'"+host+"' IDENTIFIED BY '"+newUserPassword+"'",
         function(err){
             if(err){ callback(err); return; }
@@ -245,7 +245,7 @@ module.exports.createNewUser= function(connection,newUserName,host,newUserPasswo
         });
 };
 
-module.exports.grantUserAccess= function(connection,userName,host,newDBName,callback) {
+module.exports.grantUserAccess= function(connection,userName,host,newDBName,callback){
     connection.query("GRANT ALL PRIVILEGES ON "+newDBName+".* TO '"+userName+"'@'"+host+"' WITH GRANT OPTION",
         function(err){
             if(err){ callback(err); return; }
@@ -253,7 +253,7 @@ module.exports.grantUserAccess= function(connection,userName,host,newDBName,call
         });
 };
 
-module.exports.dropDB= function(connection,DBName,callback) {
+module.exports.dropDB= function(connection,DBName,callback){
     connection.query("DROP DATABASE "+DBName,
         function(err){
             if(err){ callback(err); return; }
@@ -261,7 +261,7 @@ module.exports.dropDB= function(connection,DBName,callback) {
         });
 };
 
-module.exports.isDBEmpty= function(connection,DBName,callback) {
+module.exports.isDBEmpty= function(connection,DBName,callback){
     connection.query("SELECT table_name FROM information_schema.tables where table_schema='"+DBName+"'",
         function(err,recordset){
             if(err){ callback(err); return; }
@@ -273,7 +273,7 @@ module.exports.isDBEmpty= function(connection,DBName,callback) {
  * backupParam = {host, database, fileName, user, password,  onlyData:true/false}
  * default onlyData=false
  */
-module.exports.backupDB= function(backupParam,callback) {
+module.exports.backupDB= function(backupParam,callback){
     var onlyDataCommand=
         (backupParam.onlyData==='true') ? " --no-create-info   --ignore-table="+backupParam.database+".change_log" : " ";
     var backupDir=__dirname+'/../backups/';
@@ -300,7 +300,7 @@ module.exports.backupDB= function(backupParam,callback) {
  * restoreParams = {host, database, fileName, user, password}
  * default onlyData=false
  */
-module.exports.restoreDB= function(restoreParams,callback) {
+module.exports.restoreDB= function(restoreParams,callback){
     var filePath=path.join(__dirname+'/../backups/'+restoreParams.fileName);
     var command ='mysql -u '+restoreParams.user+' --password="'+restoreParams.password+
         '" -h '+restoreParams.host+' '+restoreParams.database+' < '+ filePath;                                  log.debug("database.restoreDB command=",command);
